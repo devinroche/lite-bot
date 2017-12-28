@@ -1,8 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/ChimeraCoder/anaconda"
 	"github.com/sirupsen/logrus"
@@ -20,20 +24,21 @@ func main() {
 	anaconda.SetConsumerSecret(consumerSecret)
 	api := anaconda.NewTwitterApi(accessToken, accessTokenSecret)
 
-	log := &logger{logrus.New()}
-	api.SetLogger(log)
-
 	stream := api.PublicStreamFilter(url.Values{
-		"track": []string{"litecoin"},
+		"follow": []string{"14338147", "928901093974794240", "1656328279", "961445378"},
 	})
 
 	defer stream.Stop()
+	response, _ := http.Get("https://api.coinmarketcap.com/v1/ticker/litecoin/")
+	data, _ := ioutil.ReadAll(response.Body)
+	fmt.Println(string(data))
 
+	api.PostTweet("foo", nil)
 	for v := range stream.C {
 		t, ok := v.(anaconda.Tweet)
 
 		if !ok {
-			log.Warningf("recieved unexpected value of type %T", v)
+			logrus.Warningf("recieved unexpected value of type %T", v)
 			continue
 		}
 
@@ -41,29 +46,25 @@ func main() {
 			continue
 		}
 
-		_, err := api.Retweet(t.Id, false)
-		if err != nil {
-			log.Errorf("cant retweet %d: %v", t.Id, err)
-			continue
-		}
+		// _, err := api.Retweet(t.Id, false)
+		// if err != nil {
+		// 	logrus.Errorf("cant retweet %d: %v", t.Id, err)
+		// 	continue
+		// }
 
-		log.Infof("retweeted %d", t.Id)
+		logrus.Infof("retweeted %d", t.Id)
+	}
+	doEvery(5*time.Second, getLTCprice)
+}
+func doEvery(d time.Duration, f func(time.Time)) {
+	for x := range time.Tick(d) {
+		f(x)
 	}
 }
 
-type logger struct {
-	*logrus.Logger
-}
-
-func (log *logger) Critical(args ...interface{}) {
-	log.Error(args...)
-}
-func (log *logger) Criticalf(format string, args ...interface{}) {
-	log.Errorf(format, args...)
-}
-func (log *logger) Notice(args ...interface{}) {
-	log.Info(args...)
-}
-func (log *logger) Noticef(format string, args ...interface{}) {
-	log.Infof(format, args...)
+func getLTCprice(t time.Time) {
+	// fmt.Printf("%v: Hello, World!\n", t)
+	response, _ := http.Get("https://api.coinmarketcap.com/v1/ticker/litecoin/")
+	data, _ := ioutil.ReadAll(response.Body)
+	fmt.Println(string(data))
 }
