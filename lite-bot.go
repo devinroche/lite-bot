@@ -18,7 +18,7 @@ var (
 	consumerSecret    = os.Getenv("TWITTER_CONSUMER_SECRET")
 	accessToken       = os.Getenv("TWITTER_ACCESS_TOKEN")
 	accessTokenSecret = os.Getenv("TWITTER_ACCESS_SECRET")
-	peopleWatch       = []string{"14338147", "928901093974794240", "1656328279", "961445378"}
+	peopleWatch       = []string{"14338147", "928901093974794240", "1656328279", "1327769568", "727071292805910528"}
 )
 
 func main() {
@@ -41,6 +41,9 @@ func main() {
 			continue
 		}
 
+		if findPerson(strconv.FormatInt(t.User.Id, 10), peopleWatch) {
+			continue
+		}
 		if t.RetweetedStatus != nil {
 			continue
 		}
@@ -54,6 +57,7 @@ func main() {
 		logrus.Infof("retweeted %d", t.Id)
 	}
 }
+
 func doEvery(d time.Duration, f func(time.Time)) {
 	for x := range time.Tick(d) {
 		fmt.Printf("foo")
@@ -80,4 +84,13 @@ func GetLitecoin(t time.Time) {
 		api.PostTweet(tweet, nil)
 	}
 	time.Sleep(1 * time.Second)
+}
+
+func findPerson(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
