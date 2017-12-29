@@ -18,16 +18,8 @@ var (
 	consumerSecret    = os.Getenv("TWITTER_CONSUMER_SECRET")
 	accessToken       = os.Getenv("TWITTER_ACCESS_TOKEN")
 	accessTokenSecret = os.Getenv("TWITTER_ACCESS_SECRET")
+	peopleWatch       = []string{"14338147", "928901093974794240", "1656328279", "961445378"}
 )
-
-func FloatToString(input_num float64) string {
-	return strconv.FormatFloat(input_num, 'f', 6, 64)
-}
-
-func Truncate(some float64) string {
-	val := float64(int(some*100)) / 100
-	return FloatToString(val)
-}
 
 func main() {
 	anaconda.SetConsumerKey(consumerKey)
@@ -35,21 +27,11 @@ func main() {
 	api := anaconda.NewTwitterApi(accessToken, accessTokenSecret)
 
 	stream := api.PublicStreamFilter(url.Values{
-		"follow": []string{"14338147", "928901093974794240", "1656328279", "961445378"},
+		"follow": peopleWatch,
 	})
 
 	defer stream.Stop()
-
-	coinInfo, err := coinApi.GetCoinData("litecoin")
-	if err != nil {
-		log.Println(err)
-	} else {
-		fmt.Printf(Truncate(coinInfo.PriceUsd))
-		tweet := "current price: " + (Truncate(coinInfo.PriceUsd)) + " 1hr change: " + (Truncate(coinInfo.PercentChange1h)) + " 24hr change: " + (Truncate(coinInfo.PercentChange24h)) + " #litecoinbot"
-		fmt.Printf(tweet)
-		api.PostTweet(tweet, nil)
-
-	}
+	go doEvery(10*time.Second, GetLitecoin)
 
 	for v := range stream.C {
 		t, ok := v.(anaconda.Tweet)
@@ -63,22 +45,39 @@ func main() {
 			continue
 		}
 
-		// _, err := api.Retweet(t.Id, false)
-		// if err != nil {
-		// 	logrus.Errorf("cant retweet %d: %v", t.Id, err)
-		// 	continue
-		// }
+		_, err := api.Retweet(t.Id, false)
+		if err != nil {
+			logrus.Errorf("cant retweet %d: %v", t.Id, err)
+			continue
+		}
 
 		logrus.Infof("retweeted %d", t.Id)
 	}
-	doEvery(5*time.Second, getLTCprice)
 }
 func doEvery(d time.Duration, f func(time.Time)) {
 	for x := range time.Tick(d) {
+		fmt.Printf("foo")
 		f(x)
 	}
 }
 
-func getLTCprice(t time.Time) {
-	fmt.Println("hi")
+//GetLitecoin data from coinmarketcap
+func GetLitecoin(t time.Time) {
+	anaconda.SetConsumerKey(consumerKey)
+	anaconda.SetConsumerSecret(consumerSecret)
+	api := anaconda.NewTwitterApi(accessToken, accessTokenSecret)
+
+	coinInfo, err := coinApi.GetCoinData("litecoin")
+	if err != nil {
+		log.Println(err)
+	} else {
+		usdprice := strconv.FormatFloat(coinInfo.PriceUsd, 'f', -1, 64)
+		percent1hr := strconv.FormatFloat(coinInfo.PercentChange1h, 'f', -1, 64)
+		percent24hr := strconv.FormatFloat(coinInfo.PercentChange24h, 'f', -1, 64)
+
+		tweet := "Current Price: $" + usdprice + "\n1 Hour Change: " + percent1hr + "%" + "\n24 Hour Change: " + percent24hr + "%" + "\n#litecoinbot $ltc #litecoin"
+		fmt.Printf(tweet)
+		api.PostTweet(tweet, nil)
+	}
+	time.Sleep(1 * time.Second)
 }
