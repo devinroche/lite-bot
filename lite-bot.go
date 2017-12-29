@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net/http"
+	"log"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ChimeraCoder/anaconda"
+	coinApi "github.com/miguelmota/go-coinmarketcap"
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,6 +19,15 @@ var (
 	accessToken       = os.Getenv("TWITTER_ACCESS_TOKEN")
 	accessTokenSecret = os.Getenv("TWITTER_ACCESS_SECRET")
 )
+
+func FloatToString(input_num float64) string {
+	return strconv.FormatFloat(input_num, 'f', 6, 64)
+}
+
+func Truncate(some float64) string {
+	val := float64(int(some*100)) / 100
+	return FloatToString(val)
+}
 
 func main() {
 	anaconda.SetConsumerKey(consumerKey)
@@ -29,11 +39,18 @@ func main() {
 	})
 
 	defer stream.Stop()
-	response, _ := http.Get("https://api.coinmarketcap.com/v1/ticker/litecoin/")
-	data, _ := ioutil.ReadAll(response.Body)
-	fmt.Println(string(data))
 
-	api.PostTweet("foo", nil)
+	coinInfo, err := coinApi.GetCoinData("litecoin")
+	if err != nil {
+		log.Println(err)
+	} else {
+		fmt.Printf(Truncate(coinInfo.PriceUsd))
+		tweet := "current price: " + (Truncate(coinInfo.PriceUsd)) + " 1hr change: " + (Truncate(coinInfo.PercentChange1h)) + " 24hr change: " + (Truncate(coinInfo.PercentChange24h)) + " #litecoinbot"
+		fmt.Printf(tweet)
+		api.PostTweet(tweet, nil)
+
+	}
+
 	for v := range stream.C {
 		t, ok := v.(anaconda.Tweet)
 
@@ -63,8 +80,5 @@ func doEvery(d time.Duration, f func(time.Time)) {
 }
 
 func getLTCprice(t time.Time) {
-	// fmt.Printf("%v: Hello, World!\n", t)
-	response, _ := http.Get("https://api.coinmarketcap.com/v1/ticker/litecoin/")
-	data, _ := ioutil.ReadAll(response.Body)
-	fmt.Println(string(data))
+	fmt.Println("hi")
 }
