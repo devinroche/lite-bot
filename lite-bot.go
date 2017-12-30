@@ -29,7 +29,7 @@ func main() {
 	})
 
 	defer stream.Stop()
-	go doEvery(10*time.Minute, GetLitecoin)
+	go doEvery(30*time.Minute, GetLitecoin)
 
 	for v := range stream.C {
 		t, ok := v.(anaconda.Tweet)
