@@ -13,4 +13,4 @@ not quite done yet but very close to v1 deployment!
 - [x] retweet mentions of litecoin
 - [x] retweet tweets from big crypto guys (charlie lee, mcafee, etc)
 - [x] multithread
-- [ ] filter mentions of litecoin (too much spam)
+- [x] filter mentions of litecoin (too much spam)

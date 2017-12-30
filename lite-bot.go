@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"strconv"
@@ -31,7 +29,7 @@ func main() {
 	})
 
 	defer stream.Stop()
-	go doEvery(10*time.Second, GetLitecoin)
+	go doEvery(10*time.Minute, GetLitecoin)
 
 	for v := range stream.C {
 		t, ok := v.(anaconda.Tweet)
@@ -41,26 +39,24 @@ func main() {
 			continue
 		}
 
-		if findPerson(strconv.FormatInt(t.User.Id, 10), peopleWatch) {
-			continue
-		}
 		if t.RetweetedStatus != nil {
 			continue
 		}
 
-		_, err := api.Retweet(t.Id, false)
-		if err != nil {
-			logrus.Errorf("cant retweet %d: %v", t.Id, err)
-			continue
-		}
+		if contains(t.User.IdStr, peopleWatch) {
+			_, err := api.Retweet(t.Id, false)
+			if err != nil {
+				logrus.Errorf("cant retweet %d: %v", t.Id, err)
+				continue
+			}
 
-		logrus.Infof("retweeted %d", t.Id)
+			logrus.Infof("retweeted %d", t.Id)
+		}
 	}
 }
 
 func doEvery(d time.Duration, f func(time.Time)) {
 	for x := range time.Tick(d) {
-		fmt.Printf("foo")
 		f(x)
 	}
 }
@@ -73,20 +69,19 @@ func GetLitecoin(t time.Time) {
 
 	coinInfo, err := coinApi.GetCoinData("litecoin")
 	if err != nil {
-		log.Println(err)
+		logrus.Errorf("cannot get coin data %v", err)
 	} else {
 		usdprice := strconv.FormatFloat(coinInfo.PriceUsd, 'f', -1, 64)
 		percent1hr := strconv.FormatFloat(coinInfo.PercentChange1h, 'f', -1, 64)
 		percent24hr := strconv.FormatFloat(coinInfo.PercentChange24h, 'f', -1, 64)
 
 		tweet := "Current Price: $" + usdprice + "\n1 Hour Change: " + percent1hr + "%" + "\n24 Hour Change: " + percent24hr + "%" + "\n#litecoinbot $ltc #litecoin"
-		fmt.Printf(tweet)
 		api.PostTweet(tweet, nil)
 	}
 	time.Sleep(1 * time.Second)
 }
 
-func findPerson(a string, list []string) bool {
+func contains(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
 			return true
